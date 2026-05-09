@@ -94,7 +94,7 @@ catch (InsufficientFundsException ex)
 ### Best practices работы с исключениями
 
 ```csharp
-// ✅ ПРАВИЛЬНО: Ловить конкретные исключения
+//  ПРАВИЛЬНО: Ловить конкретные исключения
 try
 {
     var data = File.ReadAllText("config.json");
