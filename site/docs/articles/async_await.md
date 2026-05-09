@@ -183,7 +183,7 @@ public async Task UpdateUiAsync()
 }
 
 // ConfigureAwait(false) - не возвращаться в исходный контекст
-// ✅ Использовать в библиотеках и сервисном коде для производительности
+// Использовать в библиотеках и сервисном коде для производительности
 public async Task ProcessAsync()
 {
     var data = await LoadDataAsync().ConfigureAwait(false);
