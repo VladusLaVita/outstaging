@@ -1,7 +1,5 @@
 
 
-<article>
-
 ## Асинхронное программирование (async/await)
 
 ### Основы async/await
@@ -30,11 +28,11 @@ public async Task<string> DownloadContentAsync(string url)
 // Вызов асинхронного метода
 public async Task UseDownloadAsync()
 {
-    // ✅ Правильно: await в асинхронном методе
+    //  Правильно: await в асинхронном методе
     string content = await DownloadContentAsync("https://api.example.com/data");
     Console.WriteLine(content);
     
-    // ❌ Неправильно: блокировка .Result или .Wait() - риск deadlock!
+    //  Неправильно: блокировка .Result или .Wait() - риск deadlock!
     // string bad = DownloadContentAsync("...").Result;
 }
 ```
@@ -194,10 +192,8 @@ public async Task ProcessAsync()
     await SaveAsync(result).ConfigureAwait(false);
 }
 
-// ❌ Не использовать ConfigureAwait(false) в:
+// Не использовать ConfigureAwait(false) в:
 // - UI-коде (WPF, WinForms, MAUI)
 // - ASP.NET Core (там контекст по умолчанию не требуется, но лучше явно)
 // - Когда после await обращаетесь к потоко-зависимым ресурсам
 ```
-
-</article>
