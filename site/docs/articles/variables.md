@@ -1,4 +1,4 @@
-
+<article>
 
 ## Типы данных и переменные в C#
 
@@ -99,3 +99,5 @@ int result = nullableInt ?? 0;  // Если null, вернуть 0
 string? maybeNull = null;  // Может быть null
 string notNull = "Всегда имеет значение";  // Не должен быть null
 ```
+
+</article>

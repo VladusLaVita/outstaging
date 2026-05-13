@@ -1,4 +1,5 @@
 
+<article>
 
 ## Работа с файлами и сериализация данных (JSON)
 
@@ -188,3 +189,4 @@ public static class CsvHelper
 // var yaml = new Serializer().Serialize(product);
 ```
 
+</article>

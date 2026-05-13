@@ -1,4 +1,6 @@
 
+<article>
+
 ## Свойства, конструкторы и инициализация объектов
 
 ### Свойства (Properties)
@@ -167,3 +169,4 @@ using var db2 = new DatabaseConnection();
 // Dispose() вызывается при выходе из области видимости
 ```
 
+</article>

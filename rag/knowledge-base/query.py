@@ -1,37 +1,44 @@
 #!/usr/bin/env python3
-import requests
-import json
-import sys
+import requests, json, os, sys
 from pathlib import Path
 
 OLLAMA_URL = "http://127.0.0.1:11434"
 QDRANT_URL = "http://127.0.0.1:6333"
 COLLECTION_NAME = "my_kb_local"
-LLM_MODEL = "llama3.2:3b"
-EMBEDDING_MODEL = "mxbai-embed-large"
+
+# 🤖 Модель + оптимизация под 8 ГБ
+LLM_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")
+EMBEDDING_MODEL = "nomic-embed-text"
 TOP_K = 5
-MIN_SCORE = 0.2  
+MIN_SCORE = 0.2
+
+# ⚙️ Параметры генерации (ОПТИМИЗИРОВАНО для скорости)
+LLM_OPTIONS = {
+    "num_ctx": 2048,      # ↓ Уменьшаем контекст (экономит ~1 ГБ VRAM)
+    "num_gpu": 999,       # 🔒 Принудительно держим ВСЕ слои на GPU
+    "num_thread": 8,      #  Потоки CPU для фоновых задач
+    "temperature": 0.2,
+    "top_p": 0.9,
+    "repeat_penalty": 1.1,
+    "stop": ["\n\nUser:", "ВОПРОС:", "КОНТЕКСТ:"]
+}
+
 def _extract_text(payload: dict) -> str:
-    """Извлекает текст из payload (учитывает формат llama-index)"""
-    # Прямой текст
-    if payload.get("text"):
-        return payload["text"]
-    
-    # llama-index: текст в _node_content как JSON-строка
+    if payload.get("text"): return payload["text"]
     if "_node_content" in payload:
         try:
             node = json.loads(payload["_node_content"])
-            if node.get("text"):
-                return node["text"]
-        except:
-            pass
-    
-    # Фолбэк: склеиваем все текстовые поля
+            if node.get("text"): return node["text"]
+        except: pass
     parts = [str(v) for k, v in payload.items() 
              if k not in ("_node_content", "embedding") and isinstance(v, (str, int, float))]
     return " ".join(parts)[:2000]
 
-def get_answer(question: str) -> str:
+def get_answer(question: str, stream: bool = True) -> str:
+    """
+    Получает ответ от LLM.
+    Если stream=True — печатает ответ построчно в реальном времени.
+    """
     try:
         print(f"🔍 Поиск: '{question}'")
         
@@ -44,89 +51,110 @@ def get_answer(question: str) -> str:
         embed_resp.raise_for_status()
         question_vector = embed_resp.json()["embeddings"][0]
 
-        # 2. Поиск в Qdrant с порогом релевантности
+        # 2. Поиск в Qdrant
         search_resp = requests.post(
             f"{QDRANT_URL}/collections/{COLLECTION_NAME}/points/search",
-            json={
-                "vector": question_vector,
-                "limit": TOP_K,
-                "with_payload": True,
-                "score_threshold": MIN_SCORE  # 🔥 Фильтруем слабые совпадения
-            },
+            json={"vector": question_vector, "limit": TOP_K, "with_payload": True, "score_threshold": MIN_SCORE},
             timeout=30
         )
         search_resp.raise_for_status()
         results = search_resp.json()["result"]
 
         print(f"📄 Найдено {len(results)} фрагментов (score >= {MIN_SCORE})")
-
         if not results:
             return "❌ В базе знаний не найдено информации по вашему вопросу. Попробуйте сформулировать иначе."
 
-        # 3. Формируем контекст с отладочной информацией
+        # 3. Формируем контекст
         context_parts = []
         for i, r in enumerate(results, 1):
             payload = r.get("payload", {})
             text = _extract_text(payload)
             score = r.get("score", 0)
-            if text and len(text.strip()) > 20:  # 🔥 Игнорируем слишком короткие фрагменты
+            if text and len(text.strip()) > 20:
                 context_parts.append(f"[{i}] (score: {score:.3f}) {text.strip()}")
-                print(f"   📋 [{i}] score={score:.3f}: {text[:100]}...")
         
         context = "\n\n".join(context_parts)
-        
         if not context:
             return "❌ Не удалось извлечь текст из найденных документов."
 
-        # 4. промпт с жёсткими инструкциями
-        prompt = f"""Ты — помощник по базе знаний на русском языке.
+        # 4. Промпт (оптимизирован для краткости)
+        prompt = f"""Ты — эксперт по технической документации. Отвечай ТОЛЬКО на основе контекста.
 
 ПРАВИЛА:
-1. Отвечай ТОЛЬКО на основе контекста ниже.
-2. Если в контексте нет ответа на вопрос — честно скажи: "В базе знаний нет информации по этому вопросу".
-3. Не выдумывай факты, не используй внешние знания.
-4. Отвечай подробно, но только если контекст позволяет.
+1. Если ответа нет в контексте — напиши: "В базе знаний нет информации".
+2. Не выдумывай факты.
+3. Отвечай кратко, по делу, на русском.
 
-КОНТЕКСТ ИЗ БАЗЫ ЗНАНИЙ:
+КОНТЕКСТ:
 {context}
 
-ВОПРОС ПОЛЬЗОВАТЕЛЯ: {question}
+ВОПРОС: {question}
 
 ОТВЕТ:"""
 
         # 5. Запрос к LLM
-        llm_resp = requests.post(
-            f"{OLLAMA_URL}/api/generate",
-            json={"model": LLM_MODEL, "prompt": prompt, "stream": False, "options": {"temperature": 0.1}},
-            timeout=120
-        )
-        llm_resp.raise_for_status()
-        answer = llm_resp.json().get("response", "").strip()
-        
-        # 6. Пост-обработка: если ответ бессмысленный — заменяем
-        if len(answer) < 10 or any(bad in answer.lower() for bad in ["господи помилуй", "colecciones", "no specific"]):
-            return "⚠️ Не удалось сформировать осмысленный ответ. Попробуйте перефразировать вопрос."
-        
-        return answer
+        if stream:
+            return _stream_answer(prompt)
+        else:
+            return _get_answer_sync(prompt)
 
     except requests.exceptions.ConnectionError:
-        return "❌ Не удалось соединиться с сервером. Проверьте, запущены ли Ollama и Qdrant."
+        return "❌ Не удалось соединиться с сервером. Проверьте Ollama и Qdrant."
     except Exception as e:
         print(f"❌ Ошибка: {type(e).__name__}: {e}")
         return f"❌ Произошла ошибка: {str(e)}"
 
+def _stream_answer(prompt: str) -> str:
+    """Потоковый ответ — печатает по мере генерации"""
+    answer_parts = []
+    
+    try:
+        with requests.post(
+            f"{OLLAMA_URL}/api/generate",
+            json={"model": LLM_MODEL, "prompt": prompt, "stream": True, "options": LLM_OPTIONS},
+            timeout=180,
+            stream=True
+        ) as resp:
+            resp.raise_for_status()
+            print("💡 ", end="", flush=True)  # Начало ответа
+            
+            for line in resp.iter_lines():
+                if line:
+                    chunk = json.loads(line)
+                    token = chunk.get("response", "")
+                    if token:
+                        print(token, end="", flush=True)  # 🔥 Печатаем сразу!
+                        answer_parts.append(token)
+                    if chunk.get("done", False):
+                        break
+        print()  # Новая строка после ответа
+        return "".join(answer_parts).strip()
+        
+    except Exception as e:
+        print(f"\n❌ Ошибка стриминга: {e}")
+        return _get_answer_sync(prompt)  # Фолбэк на синхронный режим
+
+def _get_answer_sync(prompt: str) -> str:
+    """Синхронный ответ — ждёт полной генерации (фолбэк)"""
+    llm_resp = requests.post(
+        f"{OLLAMA_URL}/api/generate",
+        json={"model": LLM_MODEL, "prompt": prompt, "stream": False, "options": LLM_OPTIONS},
+        timeout=180
+    )
+    llm_resp.raise_for_status()
+    return llm_resp.json().get("response", "").strip()
+
 if __name__ == "__main__":
-    print(f"🤖 RAG Чат | Модель: {LLM_MODEL}")
-    print("-" * 60)
+    print(f"🤖 RAG Чат | Модель: {LLM_MODEL} | Стриминг: ✅")
+    print("-" * 70)
     while True:
         try:
             q = input("\n❓ Вопрос: ").strip()
             if q.lower() in ("exit", "quit", "выход", "q"): 
                 print("👋 До свидания!"); break
             if not q: continue
-            print("🤔 Думаю...")
-            answer = get_answer(q)
-            print(f"\n💡 {answer}")
-            print("-" * 60)
+            print("🤔 Думаю...", end=" ", flush=True)
+            answer = get_answer(q, stream=True)  # 🔥 Включаем стриминг
+            print("-" * 70)
         except KeyboardInterrupt:
             print("\n👋 Выход"); break

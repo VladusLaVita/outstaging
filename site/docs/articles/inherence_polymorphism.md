@@ -1,3 +1,4 @@
+<article>
 
 ## Наследование и полиморфизм в C#
 
@@ -171,3 +172,5 @@ string description = animal switch
     _ => "Неизвестно"
 };
 ```
+
+</article>

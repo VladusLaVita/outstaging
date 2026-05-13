@@ -4,7 +4,7 @@
 
 
 
-
+<article>
 
 ## Entity Framework Core: основы ORM
 
@@ -189,17 +189,17 @@ var userSummary = await _db.Users
     })
     .FirstOrDefaultAsync();
 
-//  Проблема: N+1 запросов
+// ⚠️ Проблема: N+1 запросов
 var users = await _db.Users.ToListAsync();  // 1 запрос
 foreach (var user in users)
 {
     var orders = await _db.Orders.Where(o => o.UserId == user.Id).ToListAsync();  // N запросов!
 }
 
-//  Решение: Eager Loading
+// ✅ Решение: Eager Loading
 var usersWithOrders = await _db.Users
     .Include(u => u.Orders)
     .ToListAsync();  // Всего 1-2 запроса в зависимости от провайдера
 ```
 
-
+</article>

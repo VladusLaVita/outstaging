@@ -1,4 +1,5 @@
 
+<article>
 
 ## ASP.NET Core: создание веб-приложений и Web API
 
@@ -231,3 +232,4 @@ builder.Configuration
     .AddEnvironmentVariables();
 ```
 
+</article>

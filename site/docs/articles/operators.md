@@ -1,3 +1,4 @@
+<article>
 
 ## Операторы и выражения в C#
 
@@ -115,3 +116,4 @@ string description = value switch
 };
 ```
 
+</article>

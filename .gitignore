@@ -1,48 +1,75 @@
-# --- PYTHON ---
+# === Python ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
 venv/
 .venv/
 env/
-__pycache__/
-*.py[cod]
-*.pyc
-*.so
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
 *.log
-*.sqlite3
+.pytest_cache/
+.mypy_cache/
 
-# --- NODE.JS & VITEPRESS ---
+# === Node / VitePress ===
 node_modules/
+.npm
+.pnpm
 .vitepress/cache/
 .vitepress/dist/
-.DS_Store
 dist/
+build/
+*.min.js
+*.map
 
-# --- AI & VECTOR DB (Qdrant & Models) ---
-# Данные Qdrant (если монтируются в папку проекта)
-.qdrant/
+# === Qdrant / AI / Local Data ===
 qdrant_storage/
-storage/
-# Модели нейросетей (Ollama, GGUF, Safetensors и т.д.)
-models/
-*.gguf
-*.safetensors
-*.bin
 .ollama/
+models/
+*.bin
+*.gguf
+*.onnx
 
-# --- DOCKER & ENV ---
-docker-compose.override.yml
+# === Проектные данные (если приватные) ===
+# data/  # ← Раскомментируйте, если статьи НЕ должны быть в репо
+
+# === Секреты и конфиги ===
 .env
-.env.local
+.env.*
+*.pem
+*.key
+*.crt
+config.local.py
+settings.local.py
 
-# --- IDE ---
+# === IDE и ОС ===
 .vscode/
 .idea/
 *.swp
-*.swovenv/
-__pycache__/
-*.pyc
-.env
-*.local
+*.swo
 .DS_Store
+Thumbs.db
+
+# === Логи и кэш ===
 *.log
-qdrant_storage/
-.ollama/
+webhook.log
+response_cache.db
+*.sqlite
+*.db
+
+# === Временные файлы ===
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp

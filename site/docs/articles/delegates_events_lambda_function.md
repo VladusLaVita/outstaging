@@ -1,3 +1,6 @@
+
+<article>
+
 ## Делегаты, события и лямбда-выражения
 
 ### Делегаты: типы-ссылки на методы
@@ -74,7 +77,7 @@ for (int i = 0; i < 3; i++)
 }
 foreach (var action in actions) action();  // 0, 1, 2
 
-//  Без копии: все лямбды выведут 3 (последнее значение i)
+// ❌ Без копии: все лямбды выведут 3 (последнее значение i)
 ```
 
 ### События: типобезопасные делегаты
@@ -160,3 +163,5 @@ int totalAge = users.Aggregate(0, (sum, u) => sum + u.Age);
 var sorted = users.OrderBy(u => u.Name, 
     Comparer<string>.Create((a, b) => a.Length.CompareTo(b.Length)));
 ```
+
+</article>

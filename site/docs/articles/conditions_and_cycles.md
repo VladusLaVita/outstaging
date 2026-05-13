@@ -1,3 +1,4 @@
+<article>
 
 ## Управляющие конструкции: условия и циклы
 
@@ -144,3 +145,5 @@ string GetUserChoice(string[] options)
     }
 }
 ```
+
+</article>

@@ -1,3 +1,4 @@
+<article>
 
 ## Строки и работа с текстом в C#
 
@@ -140,3 +141,4 @@ string content = File.ReadAllText("file.txt", Encoding.UTF8);
 File.WriteAllText("output.txt", content, Encoding.UTF8);
 ```
 
+</article>

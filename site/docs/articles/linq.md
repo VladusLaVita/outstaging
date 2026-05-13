@@ -1,4 +1,6 @@
 
+<article>
+
 ## LINQ — язык интегрированных запросов
 
 ### Основы LINQ to Objects
@@ -132,24 +134,24 @@ using (var context = new AppDbContext())
     // SELECT Id, Name FROM Users WHERE IsActive = 1 ORDER BY Name
     var result = activeUsers.ToList();
     
-    //  Проблема: Client vs Server evaluation
+    // ⚠️ Проблема: Client vs Server evaluation
     var badQuery = context.Users
         .Where(u => u.Name.ToUpper() == "ALICE")  //ToUpper() может не транслироваться в SQL
         .ToList();  // Возможно, загрузит ВСЕ пользователи и отфильтрует в памяти!
     
-    //  Решение: использовать только методы, поддерживаемые провайдером
+    // ✅ Решение: использовать только методы, поддерживаемые провайдером
     var goodQuery = context.Users
         .Where(u => EF.Functions.Like(u.Name, "Alice"))  // Специфичный для БД метод
         .ToList();
         
-    //  N+1 проблема: запрос в цикле
+    // ⚠️ N+1 проблема: запрос в цикле
     var users = context.Users.ToList();
     foreach (var user in users)
     {
         var orders = context.Orders.Where(o => o.UserId == user.Id).ToList();  // Запрос БД на каждой итерации!
     }
     
-    //  Решение: Eager Loading
+    // ✅ Решение: Eager Loading
     var usersWithOrders = context.Users
         .Include(u => u.Orders)  // Загружаем связанные данные одним запросом
         .ToList();
@@ -188,3 +190,4 @@ var letters = new[] { "a", "b", "c" };
 var zipped = numbers.Zip(letters, (n, l) => $"{n}{l}");  // ["1a", "2b", "3c"]
 ```
 
+</article>

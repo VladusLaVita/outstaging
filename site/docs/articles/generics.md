@@ -1,5 +1,7 @@
 
 
+<article>
+
 ## Generics — обобщённое программирование
 
 ### Основы дженериков
@@ -166,3 +168,4 @@ public class UserService
 }
 ```
 
+</article>

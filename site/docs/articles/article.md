@@ -1,6 +1,6 @@
 # C# и .NET: Полное руководство
 
-
+<article>
 
 ## Введение в C# и платформу .NET
 
@@ -84,6 +84,7 @@ dotnet publish -c Release -r win-x64
 - **Асинхронность** через `async/await`
 - **Кроссплатформенность** (.NET 5+)
 
+</article>
 
 
 
