@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+"""
+Синхронизатор статей Knowledge Base.
+Источник: папка data/ в корне проекта (и в GitHub репозитории).
+Назначения:
+  - rag/knowledge-base/data/ (для RAG-индексации)
+  - site/docs/articles/      (для VitePress)
+"""
 import subprocess
 import shutil
 import sys
@@ -13,10 +20,10 @@ REPO_URL = "https://github.com/svyatoylol/knowledgebse.git"
 BRANCH = "main"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-# 🎯 ЕДИНЫЙ ИСТОЧНИК ПРАВДЫ: папка data в корне проекта
-DATA_ROOT = PROJECT_ROOT / "data"  # ← Новая центральная папка
+# 🎯 ЕДИНЫЙ ИСТОЧНИК: папка data/ в корне проекта
+DATA_ROOT = PROJECT_ROOT / "data"
 
-# Пути назначения (куда копируем)
+# Пути назначения
 RAG_DATA_DIR = PROJECT_ROOT / "rag" / "knowledge-base" / "data"
 ARTICLES_DIR = PROJECT_ROOT / "site" / "docs" / "articles"
 ARTICLES_JSON = PROJECT_ROOT / "site" / "public" / "articles.json"
@@ -46,26 +53,16 @@ def extract_metadata(file_path: Path):
         return file_path.stem, ""
 
 def sync_directory(source: Path, dest: Path) -> set:
-    """
-    Синхронизирует папку: копирует новые/изменённые файлы, удаляет отсутствующие в источнике.
-    Возвращает множество имён файлов, которые есть в источнике.
-    """
+    """Синхронизирует папку: копирует новые/изменённые, удаляет отсутствующие в источнике."""
     dest.mkdir(parents=True, exist_ok=True)
     source_files = {f.name for f in source.glob("*.md")}
     
-    # 1. Копируем новые и изменённые файлы
+    # 1. Копируем новые и изменённые
     for src_file in source.glob("*.md"):
         dst_file = dest / src_file.name
-        needs_copy = True
-        
-        if dst_file.exists():
-            if file_hash(src_file) == file_hash(dst_file):
-                needs_copy = False
-        
-        if needs_copy:
+        if not dst_file.exists() or file_hash(src_file) != file_hash(dst_file):
             shutil.copy2(src_file, dst_file)
-            action = "✅ Обновлено" if dst_file.exists() else "🆕 Добавлено"
-            print(f"   {action}: {src_file.name}")
+            print(f"   {'✅ Обновлено' if dst_file.exists() else '🆕 Добавлено'}: {src_file.name}")
     
     # 2. Удаляем файлы, которых нет в источнике
     for dst_file in list(dest.glob("*.md")):
@@ -79,59 +76,76 @@ def update_kb():
     print(f"📂 Корень проекта: {PROJECT_ROOT}")
     print(f"💾 Источник статей: {DATA_ROOT}")
     
-    # 🎯 Создаём папку data в корне, если нет
     DATA_ROOT.mkdir(parents=True, exist_ok=True)
     
-    # Если data пустая — пробуем скачать из репо (первый запуск)
-    if not any(DATA_ROOT.glob("*.md")):
-        print("📥 Папка data/ пустая. Скачиваем статьи из репозитория...")
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            tmp_repo = Path(tmp_dir) / "kb-repo"
-            run_cmd(["git", "clone", "--depth=1", "--filter=blob:none", "--no-checkout", REPO_URL, str(tmp_repo)])
-            run_cmd(["git", "sparse-checkout", "init", "--cone"], cwd=tmp_repo)
-            run_cmd(["git", "sparse-checkout", "set", "rag/knowledge-base/data"], cwd=tmp_repo)
-            run_cmd(["git", "checkout", BRANCH], cwd=tmp_repo)
+    # 1️⃣ Скачиваем актуальные статьи из GitHub -> в локальную data/
+    print("\n📥 Синхронизация с GitHub (папка data/)...")
+    github_count = 0
+    
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp_repo = Path(tmp_dir) / "kb-repo"
+        run_cmd(["git", "clone", "--depth=1", "--filter=blob:none", "--no-checkout", REPO_URL, str(tmp_repo)])
+        run_cmd(["git", "sparse-checkout", "init", "--cone"], cwd=tmp_repo)
+        run_cmd(["git", "sparse-checkout", "set", "data"], cwd=tmp_repo)  # 👈 КОРНЕВАЯ data/
+        run_cmd(["git", "checkout", BRANCH], cwd=tmp_repo)
+        
+        github_source = tmp_repo / "data"
+        if github_source.exists():
+            github_files = {f.name for f in github_source.glob("*.md")}
+            github_count = len(github_files)
             
-            source = tmp_repo / "rag" / "knowledge-base" / "data"
-            if source.exists():
-                for f in source.glob("*.md"):
-                    shutil.copy2(f, DATA_ROOT / f.name)
-                print(f"✅ Скачано {len(list(DATA_ROOT.glob('*.md')))} статей в data/")
-            else:
-                print("⚠️ Не удалось скачать статьи. Создайте файлы вручную в data/")
+            # Копируем/обновляем
+            for f in github_source.glob("*.md"):
+                dst = DATA_ROOT / f.name
+                if not dst.exists() or file_hash(f) != file_hash(dst):
+                    shutil.copy2(f, dst)
+                    print(f"   📥 Скачано/обновлено: {f.name}")
+                    
+            # Удаляем локальные файлы, которых нет на GitHub
+            for local_md in list(DATA_ROOT.glob("*.md")):
+                if local_md.name not in github_files:
+                    local_md.unlink()
+                    print(f"   🗑️  Удалено локально (нет на GitHub): {local_md.name}")
+        else:
+            print(f"⚠️ Папка data/ не найдена в репозитории на ветке {BRANCH}")
 
-    # 🔄 Синхронизация ИЗ data/ → в rag/data (для RAG)
+    print(f"✅ В локальной data/: {len(list(DATA_ROOT.glob('*.md')))} статей")
+
+    # 2️⃣ Синхронизация ИЗ data/ → в rag/knowledge-base/data/
     print("\n🔄 Синхронизация: data/ → rag/knowledge-base/data/")
     synced_to_rag = sync_directory(DATA_ROOT, RAG_DATA_DIR)
-    print(f"✅ В rag/data: {len(synced_to_rag)} статей")
 
-    # 🔄 Синхронизация ИЗ data/ → в site/docs/articles (для VitePress)
+    # 3️⃣ Синхронизация ИЗ data/ → в site/docs/articles/
     print("\n🔄 Синхронизация: data/ → site/docs/articles/")
     synced_to_site = sync_directory(DATA_ROOT, ARTICLES_DIR)
-    print(f"✅ В site/docs/articles: {len(synced_to_site)} статей")
 
-    # 📄 Генерация articles.json (только актуальные статьи из data/)
+    # 4️⃣ Генерация articles.json
+    print("\n📄 Генерация articles.json...")
     articles = []
-    for md_file in sorted(DATA_ROOT.glob("*.md")):  # sorted для стабильного порядка
+    for md_file in sorted(DATA_ROOT.glob("*.md")):
         if md_file.name in synced_to_site:
             title, desc = extract_metadata(md_file)
             articles.append({
                 "title": title,
                 "path": f"/articles/{md_file.stem}",
                 "description": desc,
-                "filename": md_file.name  # ← Добавляем имя файла для отладки
+                "filename": md_file.name
             })
     
     ARTICLES_JSON.parent.mkdir(parents=True, exist_ok=True)
     with open(ARTICLES_JSON, "w", encoding="utf-8") as f:
         json.dump(articles, f, ensure_ascii=False, indent=2)
-    print(f"\n📄 Сгенерирован: {ARTICLES_JSON} ({len(articles)} статей)")
-
+    
     # 🎯 Итог
-    print("\n🎯 Синхронизация завершена:")
-    print(f"   • Источник: {DATA_ROOT} ({len(list(DATA_ROOT.glob('*.md')))} файлов)")
-    print(f"   • Синхронизировано: {len(synced_to_rag)} статей")
-    print(f"   • Удалено устаревших: {len(list(ARTICLES_DIR.glob('*.md'))) - len(synced_to_site)}")
+    print("\n" + "="*50)
+    print("🎯 СИНХРОНИЗАЦИЯ ЗАВЕРШЕНА")
+    print("="*50)
+    print(f"   • На GitHub: {github_count} статей")
+    print(f"   • Локально data/: {len(list(DATA_ROOT.glob('*.md')))} файлов")
+    print(f"   • Синхронизировано в rag/: {len(synced_to_rag)}")
+    print(f"   • Синхронизировано в site/: {len(synced_to_site)}")
+    print(f"   • Сгенерировано статей в JSON: {len(articles)}")
+    print("="*50)
 
 if __name__ == "__main__":
     update_kb()

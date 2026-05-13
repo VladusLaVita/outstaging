@@ -1,102 +1,14 @@
 [
   {
-    "title": "LINQ — язык интегрированных запросов",
-    "path": "/articles/linq",
-    "description": "<article>..."
+    "title": "Почему C# популярен?",
+    "path": "/articles/csharp",
+    "description": "content = \"\"\"# Введение в C#: От основ до современных возможностей...",
+    "filename": "csharp.md"
   },
   {
-    "title": "Типы данных и переменные в C#",
-    "path": "/articles/variables",
-    "description": "<article>..."
-  },
-  {
-    "title": "Массивы и основные коллекции",
-    "path": "/articles/collections",
-    "description": "<article>..."
-  },
-  {
-    "title": "Entity Framework Core: основы ORM",
-    "path": "/articles/entity_framework_core",
-    "description": "<article>..."
-  },
-  {
-    "title": "ASP.NET Core: создание веб-приложений и Web API",
-    "path": "/articles/web_api",
-    "description": "<article>..."
-  },
-  {
-    "title": "Наследование и полиморфизм в C#",
-    "path": "/articles/inherence_polymorphism",
-    "description": "<article>..."
-  },
-  {
-    "title": "Классы и объекты. Основы ООП",
-    "path": "/articles/oop",
-    "description": "<article>..."
-  },
-  {
-    "title": "C# и .NET: Полное руководство",
-    "path": "/articles/article",
-    "description": "<article>..."
-  },
-  {
-    "title": "Управляющие конструкции: условия и циклы",
-    "path": "/articles/conditions_and_cycles",
-    "description": "<article>..."
-  },
-  {
-    "title": "Методы: параметры, перегрузка и рекурсия",
-    "path": "/articles/methods",
-    "description": "<article>..."
-  },
-  {
-    "title": "Асинхронное программирование (async/await)",
-    "path": "/articles/async_await",
-    "description": "<article>..."
-  },
-  {
-    "title": "Generics — обобщённое программирование",
-    "path": "/articles/generics",
-    "description": "<article>..."
-  },
-  {
-    "title": "Dependency Injection и современные возможности C#",
-    "path": "/articles/dependency_injection",
-    "description": "<article>..."
-  },
-  {
-    "title": "Делегаты, события и лямбда-выражения",
-    "path": "/articles/delegates_events_lambda_function",
-    "description": "<article>..."
-  },
-  {
-    "title": "Операторы и выражения в C#",
-    "path": "/articles/operators",
-    "description": "<article>..."
-  },
-  {
-    "title": "Исключения и обработка ошибок",
-    "path": "/articles/exceptions_and_errors",
-    "description": "<article>..."
-  },
-  {
-    "title": "Свойства, конструкторы и инициализация объектов",
-    "path": "/articles/properties",
-    "description": "<article>..."
-  },
-  {
-    "title": "Работа с файлами и сериализация данных (JSON)",
-    "path": "/articles/json",
-    "description": "<article>..."
-  },
-  {
-    "title": "Строки и работа с текстом в C#",
-    "path": "/articles/strings",
-    "description": "<article>..."
-  },
-  {
-    "title": "Абстрактные классы и интерфейсы",
-    "path": "/articles/abstract_classes",
-    "description": "<article>..."
+    "title": "Заголовок статьи",
+    "path": "/articles/my-article",
+    "description": "Текст статьи...обезьяна это большая собака но чуть умнее и тупее...",
+    "filename": "my-article.md"
   }
 ]

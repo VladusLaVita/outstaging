@@ -79,9 +79,16 @@ run_in_term() {
 
 run_in_term "🔙 API" "cd '$PYTHON_DIR' && source venv/bin/activate && python api.py"
 sleep 1
+# СТАЛО ✅ — Сборка + деплой статики
 echo -e "${YELLOW}📦 Сборка фронтенда...${NC}"
 cd "$SITE_DIR" || exit
 npm run build
+
+# Копируем билд на VPS (замените путь на ваш)
+echo -e "${YELLOW}🚀 Деплой на VPS...${NC}"
+rsync -avz --delete docs/.vitepress/dist/ root@86.110.194.68:/var/www/swinki.ru/dist/
+
+echo -e "${GREEN}✅ Фронтенд собран и задеплоен${NC}"
 echo -e "${GREEN}✅ Сборка завершена. Файлы в: $SITE_DIR/docs/.vitepress/dist${NC}"
 if [ -f "$PROJECT_DIR/webhook-listener.py" ]; then
     sleep 1
