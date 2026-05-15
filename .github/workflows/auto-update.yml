@@ -1,21 +1,3 @@
-name: 🔄 Auto-Update Knowledge Base
-
-on:
-  push:
-    branches: [ main ]
-    paths:
-      - 'data/**'
-      - 'rag/**'
-      - 'site/**'
-      - 'scripts/**'
-      - '.github/workflows/**'
-  workflow_dispatch:
-
-jobs:
-  trigger-webhook:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5  # 🔥 Общий таймаут джоба
-    steps:
       - name: 📡 Send webhook to home PC
         run: |
           set -euo pipefail
@@ -25,10 +7,10 @@ jobs:
             --arg repo "${{ github.repository }}" \
             --arg sha "${{ github.sha }}" \
             '{ref: $ref, repository: {full_name: $repo}, head_commit: {id: $sha}}')
-          
+            
           SIGNATURE=$(echo -n "$PAYLOAD" | openssl dgst -sha256 -hmac "${{ secrets.WEBHOOK_SECRET }}" -hex | awk '{print $2}')
           
-          # 🔥 Увеличенные таймауты + обработка ошибок
+          # 🔥 ОДНОСТРОЧНАЯ КОМАНДА (безопасно для GitHub Actions)
           HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/response.json -X POST \
             "http://${{ secrets.VPS_HOST }}:${{ secrets.WEBHOOK_PORT }}" \
             -H "Content-Type: application/json" \
@@ -36,12 +18,17 @@ jobs:
             -H "X-Hub-Signature-256: sha256=$SIGNATURE" \
             -H "User-Agent: GitHub-Hookshot/${{ github.sha }}" \
             -d "$PAYLOAD" \
-            --max-time 60 \          # 🔥 Максимум 60 сек на весь запрос
-            --connect-timeout 10 \   # 🔥 10 сек на установление соединения
-            --retry 2 \              # 🔥 2 повторные попытки
-            --retry-delay 5 \
-            --retry-connrefused || echo "000")
-          
+            --max-time 60 --connect-timeout 10 --retry 2 --retry-delay 5 --retry-connrefused || echo "000")
+            
           if [[ "$HTTP_CODE" =~ ^(200|202)$ ]]; then
             echo "✅ Webhook доставлен (код $HTTP_CODE)"
-            cat /tmp/response.json | jq
+            cat /tmp/response.json | jq . 2>/dev/null || true
+          elif [[ "$HTTP_CODE" == "000" ]]; then
+            echo "⚠️ Соединение недоступно (таймаут/сеть)"
+          else
+            echo "⚠️ Webhook вернул код $HTTP_CODE"
+            cat /tmp/response.json 2>/dev/null || true
+          fi
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          WEBHOOK_PORT: ${{ secrets.WEBHOOK_PORT }}
