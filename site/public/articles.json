@@ -30,6 +30,12 @@
     "filename": "my-article.md"
   },
   {
+    "title": "Pamagite",
+    "path": "/articles/pamagite",
+    "description": "as...",
+    "filename": "pamagite.md"
+  },
+  {
     "title": "Sadas",
     "path": "/articles/sadas",
     "description": "dasdddddddddddddddddddddd...",

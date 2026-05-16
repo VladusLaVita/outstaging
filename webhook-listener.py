@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-"""
-Webhook listener для GitHub Actions — минимальная, надёжная версия.
-Сначала отвечает 202, потом асинхронно запускает update.sh
-"""
+
 import http.server, subprocess, json, os, hashlib, hmac, sys, logging, threading
 from pathlib import Path
 from dotenv import load_dotenv
@@ -20,7 +17,9 @@ UPDATE_SCRIPT = PROJECT_ROOT / "scripts" / "update.sh"
 PORT = int(os.getenv("WEBHOOK_PORT", "25000"))
 
 # 📝 Логирование
-LOG_FILE = PROJECT_ROOT / "webhook.log"
+LOG_DIR = PROJECT_ROOT / "logs"
+LOG_DIR.mkdir(exist_ok=True)
+LOG_FILE = LOG_DIR / "webhook.log"
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
