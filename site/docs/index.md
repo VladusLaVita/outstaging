@@ -2,28 +2,24 @@
 layout: home
 hero:
   name: "Knowledge Base"
-  text: "AI-Powered Documentation"
-  tagline: Search, ask questions, and explore articles.
+  text: "Ваша локальная база знаний с ИИ"
+  tagline: "Поиск по статьям, RAG-ответы и полная приватность. Всё работает на вашем ПК."
   actions:
     - theme: brand
-      text: Explore Articles
-      link: '#articles'
+      text: 📖 Читать статьи
+      link: /articles/
     - theme: alt
-      text: Ask AI
-      link: '#ai-chat'
+      text: 💬 Спросить у ИИ
+      link: /chat/
+
 features:
-  - title: 📚 Article List
-    details: "Browse all indexed documents."
-  - title: 🤖 AI Assistant
-    details: "Ask questions and get answers based on the docs."
+  - icon: 🔍
+    title: Умный поиск
+    details: Векторный поиск по статьям через Qdrant + эмбеддинги
+  - icon: 🤖
+    title: Локальный ИИ
+    details: Ollama + Qwen 2.5. Никаких облаков, полная конфиденциальность
+  - icon: 🔄
+    title: Авто-синхронизация
+    details: GitHub → ваш ПК → индексация → деплой. Всё в одном клик
 ---
-
-<div id="ai-chat" style="margin: 3rem 0;">
-  <AiChat />
-</div>
-
-<hr style="margin: 3rem 0; border: none; border-top: 1px solid var(--vp-c-divider);" />
-
-<div id="articles" style="margin: 3rem 0;">
-  <ArticleList />
-</div>

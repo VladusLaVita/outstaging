@@ -1,6 +1,6 @@
-// site/docs/.vitepress/theme/index.ts
 import DefaultTheme from 'vitepress/theme'
-import AiChat from './AiChat.vue'        // 👇 ./ означает "текущая папка"
+import './custom.css'  // 🔥 Подключаем стили
+import AiChat from './AiChat.vue'
 import ArticleList from './ArticleList.vue'
 
 export default {
