@@ -35,6 +35,13 @@
     "updated": 1778679733.7413692
   },
   {
+    "title": "Gdedisain",
+    "path": "/articles/gdedisain",
+    "description": "vikayatebyashavay...",
+    "filename": "gdedisain.md",
+    "updated": 1778945646.1083565
+  },
+  {
     "title": "Заголовок статьи",
     "path": "/articles/my-article",
     "description": "Текст статьи...обезьяна это большая собака но чуть умнее и тупее...",
@@ -82,5 +89,12 @@
     "description": "asdasdasdsadas...",
     "filename": "svyatoizastavvikurabotat.md",
     "updated": 1778678296.804557
+  },
+  {
+    "title": "Zzzzz",
+    "path": "/articles/zzzzz",
+    "description": "ZZZZZZZZZZZZZz...",
+    "filename": "zzzzz.md",
+    "updated": 1778943886.6972375
   }
 ]

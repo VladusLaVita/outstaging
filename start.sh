@@ -191,11 +191,37 @@ else
     log_warn "rsync не удался"
 fi
 
-# 9. Запуск API
+# 9. Запуск API (Gunicorn — в основном потоке для корректного Ctrl+C)
 progress "Запуск API..."
 echo ""
-launch_service "🔙 API" "$PROJECT_DIR" "$VENV_DIR/bin/activate" "$SCRIPTS_DIR/api.py"
+
+GUNCORN_CMD="cd '$SCRIPTS_DIR' && source '$VENV_DIR/bin/activate' && exec gunicorn \
+  -w 1 -k gthread --threads 2 --timeout 300 --bind 0.0.0.0:8000 \
+  --access-logfile '$LOG_DIR/gunicorn-access.log' \
+  --error-logfile '$LOG_DIR/gunicorn-error.log' \
+  --preload 'api:app'"
+
+# 🔥 Запускаем в НОВОМ терминале (чтобы не блокировал основной скрипт)
+if command -v gnome-terminal &>/dev/null; then
+    gnome-terminal --title="🔙 API" -- bash -ic "$GUNCORN_CMD" &
+elif command -v cosmic-term &>/dev/null; then
+    cosmic-term -e bash -ic "$GUNCORN_CMD" &
+elif command -v konsole &>/dev/null; then
+    konsole --new-tab -e bash -ic "$GUNCORN_CMD" &
+else
+    # Fallback: просто в фоне, но с правильным обработчиком сигналов
+    (bash -ic "$GUNCORN_CMD") &
+fi
+
+# Даем время на старт
 sleep 2
+
+# Проверка
+if curl -sf http://localhost:8000/health >/dev/null 2>&1; then
+    log_ok "API запущен (Gunicorn)"
+else
+    log_warn "API не отвечает — проверьте $LOG_DIR/gunicorn-error.log"
+fi
 
 # 10. Запуск Webhook
 progress "Запуск Webhook..."

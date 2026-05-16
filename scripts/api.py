@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-Flask API для Knowledge Base — с поддержкой стриминга и корректными путями.
+Flask API для Knowledge Base — с ПОЛНОЦЕННЫМ стримингом.
 📍 Расположение: scripts/api.py
+🚀 Запускается через Gunicorn (Linux) или Waitress (Windows)
 """
-from flask import Flask, request, jsonify, Response, stream_with_context
+from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 from pathlib import Path
 import sys, os, time, logging, json
@@ -16,7 +17,7 @@ DATA_DIR = PROJECT_ROOT / "data"
 LOG_DIR = PROJECT_ROOT / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
-# 🔧 Добавляем scripts/ в путь для импорта локальных модулей (query.py и др.)
+# 🔧 Добавляем scripts/ в путь для импорта локальных модулей
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
@@ -34,7 +35,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# 🔥 Импорт локального модуля (query.py должен лежать в scripts/)
+# 🔥 Импорт query.py
 try:
     from query import get_answer
 except ImportError as e:
@@ -42,6 +43,7 @@ except ImportError as e:
     logger.error("💡 Убедитесь, что query.py находится в папке scripts/")
     sys.exit(1)
 
+# 🚀 Создание Flask приложения
 app = Flask(__name__)
 CORS(app, origins=[
     "http://localhost:5173",
@@ -50,12 +52,19 @@ CORS(app, origins=[
     "https://www.swinki.ru"
 ])
 
+# === Эндпоинты ===
+
 @app.route('/health', methods=['GET'])
 def health():
+    """Health check для мониторинга"""
     return jsonify({"status": "ok", "service": "kb-api"}), 200
 
 @app.route('/api/ask', methods=['POST'])
 def ask():
+    """
+    Основной эндпоинт для вопросов.
+    Поддерживает стриминг через ?stream=true (SSE format).
+    """
     start_time = time.time()
     try:
         if not request.is_json:
@@ -69,19 +78,51 @@ def ask():
         stream = request.args.get('stream', 'false').lower() == 'true'
         
         if stream:
+            # 🔥 ГЕНЕРАТОР ДЛЯ СТРИМИНГА (SSE)
             def generate():
                 try:
-                    answer = get_answer(question, stream=True)
-                    yield json.dumps({
-                        "success": True, 
-                        "answer": answer, 
-                        "meta": {"time_sec": round(time.time() - start_time, 2)}
-                    }) + "\n"
+                    # Получаем генератор чанков из query.py
+                    answer_gen = get_answer(question, stream=True)
+                    
+                    for chunk in answer_gen:
+                        # Пропускаем пустые чанки
+                        if not chunk or not chunk.strip():
+                            continue
+                            
+                        # Формируем JSON для чанка
+                        data = json.dumps({
+                            "success": True,
+                            "chunk": chunk,
+                            "meta": {"time_sec": round(time.time() - start_time, 2)}
+                        }, ensure_ascii=False)
+                        
+                        # 🔥 SSE-формат + 🔥 КОДИРОВКА В БАЙТЫ для Gunicorn
+                        yield f"data: {data}\n\n".encode('utf-8')
+                        
+                except StopIteration:
+                    pass
                 except Exception as e:
                     logger.error(f"❌ Stream error: {e}")
-                    yield json.dumps({"success": False, "error": str(e)}) + "\n"
-            return Response(stream_with_context(generate()), mimetype='application/json')
+                    error_data = json.dumps({"success": False, "error": str(e)}, ensure_ascii=False)
+                    yield f"data: {error_data}\n\n".encode('utf-8')
+                finally:
+                    # Сигнал конца потока (тоже в байтах!)
+                    yield b"data: [DONE]\n\n"
+            
+            # 🔥 КРИТИЧНЫЕ ЗАГОЛОВКИ для стриминга
+            return Response(
+                generate(),
+                mimetype='text/event-stream',
+                headers={
+                    'Cache-Control': 'no-cache, no-store, no-transform',
+                    'X-Accel-Buffering': 'no',
+                    'Connection': 'keep-alive',
+                    'Transfer-Encoding': 'chunked',
+                },
+                direct_passthrough=True
+            )
         else:
+            # 🔹 Синхронный ответ (как было)
             logger.info(f"📥 Вопрос: {question[:200]}...")
             answer = get_answer(question, stream=False)
             elapsed = time.time() - start_time
@@ -97,8 +138,7 @@ def ask():
         logger.error(f"❌ API error ({elapsed:.2f}s): {type(e).__name__}: {e}")
         return jsonify({"error": str(e)}), 500
 
-if __name__ == '__main__':
-    logger.info(f"🚀 API запущен: http://0.0.0.0:8000")
-    logger.info(f"📁 PROJECT_ROOT: {PROJECT_ROOT}")
-    logger.info(f"🤖 Модель: {os.getenv('OLLAMA_MODEL', 'qwen2.5:7b')} | Стриминг: ✅")
-    app.run(host='0.0.0.0', port=8000, debug=False)
+# Этот блок оставлен закомментированным только для экстренной отладки.
+# if __name__ == '__main__':
+#     logger.warning("⚠️  Запуск через Flask dev server — только для отладки!")
+#     app.run(host='0.0.0.0', port=8000, debug=False, threaded=True)

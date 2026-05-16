@@ -3,7 +3,7 @@ chcp 65001 >nul
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
 
-:: 🎨 Цвета (работают в Windows Terminal / PowerShell)
+:: 🎨 Цвета (ANSI-коды, работают в Windows Terminal / PowerShell)
 set "GREEN=[92m"
 set "YELLOW=[93m"
 set "RED=[91m"
@@ -21,11 +21,10 @@ set "SSH_KEY=%USERPROFILE%\.ssh\kb_vps"
 
 mkdir "%LOG_DIR%" 2>nul
 
-:: 📊 Прогресс-бар
+:: 📊 Прогресс-бар (упрощённый для CMD)
 set /a TOTAL_STEPS=10
 set /a CURRENT_STEP=0
 
-:: 🔧 Функция прогресса (упрощённая для CMD)
 :progress
 set /a CURRENT_STEP+=1
 set /a PCT=CURRENT_STEP*100/TOTAL_STEPS
@@ -36,7 +35,6 @@ for /l %%i in (1,1,20) do (
 <nul set /p "=🔄 [!BAR!] !PCT!%% | %~1 "
 goto :eof
 
-:: ✅ / ⚠️ / ❌ Логирование
 :log_ok
 echo.
 echo %GREEN%✅ %~1%NC%
@@ -53,6 +51,21 @@ echo %RED%❌ %~1%NC%
 exit /b 1
 goto :eof
 
+:: 🧹 Очистка при выходе
+:cleanup
+echo.
+echo %YELLOW%🛑 Остановка...%NC%
+if exist "%PROJECT_DIR%\stop.bat" (
+    call "%PROJECT_DIR%\stop.bat"
+)
+exit /b
+
+:: Перехват сигналов (Ctrl+C, закрытие окна)
+trap cleanup 2>nul || (
+    :: Fallback для CMD: просто вызываем stop.bat при выходе
+)
+
+:: 🚀 ГЛАВНЫЙ ЗАПУСК
 echo %CYAN%╔════════════════════════╗%NC%
 echo %CYAN%║  🚀 Запуск KB          ║%NC%
 echo %CYAN%╚════════════════════════╝%NC%
@@ -74,7 +87,7 @@ timeout /t 1 /nobreak >nul
 start /min "Tunnel-API" ssh -i "%SSH_KEY%" -o StrictHostKeyChecking=no -R 0.0.0.0:8000:localhost:8000 -N -o ServerAliveInterval=30 root@%VPS%
 start /min "Tunnel-WH" ssh -i "%SSH_KEY%" -o StrictHostKeyChecking=no -R 0.0.0.0:25000:localhost:25000 -N -o ServerAliveInterval=30 root@%VPS%
 
-:: Ждём подключения
+:: Ждём подключения (до 15 сек)
 for /l %%i in (1,1,15) do (
     ssh -i "%SSH_KEY%" root@%VPS% "netstat -ano 2>nul | findstr :8000" >nul 2>&1 && ^
     ssh -i "%SSH_KEY%" root@%VPS% "netstat -ano 2>nul | findstr :25000" >nul 2>&1 && goto :tunnels_ready
@@ -145,16 +158,24 @@ if exist "docs\.vitepress\dist\" (
     scp -q -r "docs\.vitepress\dist\*" root@%VPS%:/var/www/swinki.ru/dist/ 2>&1 | findstr /v "Uploading" && call :log_ok "Фронтенд задеплоен" || call :log_warn "scp не удался"
 )
 
-:: 9. Запуск API
+:: 9. Запуск API (Waitress для Windows — Gunicorn не работает на Win)
 call :progress "Запуск API..."
 echo.
-start "🔙 API" cmd /k "cd /d %PROJECT_DIR% && call %VENV_DIR%\Scripts\activate.bat && python %SCRIPTS_DIR%\api.py"
+
+:: 🔥 Waitress — официальный WSGI-сервер для Windows
+set "WAITRESS_CMD=cd /d "%SCRIPTS_DIR%" && call "%VENV_DIR%\Scripts\activate.bat" && "%VENV_DIR%\Scripts\waitress-serve.exe" --listen=*:8000 --threads=4 --channel-timeout=300 api:app"
+
+start "🔙 API (Waitress)" cmd /k "%WAITRESS_CMD%"
 timeout /t 2 /nobreak >nul
+
+:: Проверка
+curl.exe -sf http://localhost:8000/health >nul 2>&1 && call :log_ok "API запущен (Waitress)" || call :log_warn "API не отвечает"
 
 :: 10. Запуск Webhook
 call :progress "Запуск Webhook..."
 if exist "%SCRIPTS_DIR%\webhook-listener.py" (
-    start "📡 Webhook" cmd /k "cd /d %PROJECT_DIR% && call %VENV_DIR%\Scripts\activate.bat && python %SCRIPTS_DIR%\webhook-listener.py"
+    set "WEBHOOK_CMD=cd /d "%PROJECT_DIR%" && call "%VENV_DIR%\Scripts\activate.bat" && python "%SCRIPTS_DIR%\webhook-listener.py""
+    start "📡 Webhook" cmd /k "%WEBHOOK_CMD%"
     call :log_ok "Webhook запущен"
 ) else (
     call :log_warn "webhook-listener.py не найден"
@@ -170,7 +191,5 @@ echo 🤖 %CYAN%http://localhost:8000%NC%
 echo 🎣 %CYAN%http://localhost:25000%NC%
 echo %YELLOW%💡 Закройте окна терминалов или запустите stop.bat для остановки%NC%
 
-:: Очистка при закрытии (опционально)
-:: Можно добавить: trap через reg add для автозапуска stop.bat при выходе
-
+:: 🔥 Оставляем окно открытым
 pause >nul

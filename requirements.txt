@@ -1,3 +1,11 @@
+# === 🖥️ WSGI-серверы (продакшен) ===
+gunicorn>=21.2.0; sys_platform != 'win32'
+waitress>=2.1.2; sys_platform == 'win32'
+
+# === 🐍 Основные зависимости ===
+flask>=3.0.0
+flask-cors>=4.0.0
+requests>=2.31.0
 llama-index>=0.12.0
 llama-index-core>=0.12.0
 llama-index-llms-ollama>=0.3.0
@@ -6,9 +14,7 @@ llama-index-vector-stores-qdrant>=0.3.0
 llama-index-readers-file>=0.3.0
 qdrant-client>=1.10.0
 ollama>=0.3.0
-requests>=2.31.0
 python-dotenv>=1.0.0
 pypdf>=4.0.0
+numpy<2
 tqdm>=4.66.0
-flask>=3.0.0
-flask-cors>=4.0.0
